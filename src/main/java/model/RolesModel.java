@@ -1,7 +1,9 @@
 package model;
 
 import JGrapeSystem.jGrapeFW_Message;
+import apps.appsProxy;
 import database.db;
+import interfaceModel.GrapeDBSpecField;
 import interfaceModel.GrapeTreeDBModel;
 import java.io.FileInputStream;
 import java.util.HashMap;
@@ -19,6 +21,7 @@ import session.session;
 
 public class RolesModel {
 	private GrapeTreeDBModel role;
+	private GrapeDBSpecField gdbField;
 	private String wbid;
 	private JSONObject _obj = new JSONObject();
 
@@ -27,8 +30,11 @@ public class RolesModel {
 	}
 
 	public RolesModel() {
-		this.role = new GrapeTreeDBModel();
-		role.form("userGroup");
+		role = new GrapeTreeDBModel();
+		gdbField = new GrapeDBSpecField();
+        gdbField.importDescription(appsProxy.tableConfig("roles"));
+        role.descriptionModel(gdbField);
+        role.bindApp();
 	}
 
 	public int insert(JSONObject object) {

@@ -4,6 +4,7 @@ import JGrapeSystem.jGrapeFW_Message;
 import apps.appsProxy;
 import check.checkHelper;
 import database.db;
+import interfaceModel.GrapeDBSpecField;
 import interfaceModel.GrapeTreeDBModel;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -21,54 +22,31 @@ import org.json.simple.JSONObject;
 import rpc.execRequest;
 import security.codec;
 import session.session;
+import string.StringHelper;
 
 public class userModel {
 	private GrapeTreeDBModel users;
-	private CommanModel model = new CommanModel();
+	private GrapeDBSpecField gdbField;
 	private JSONObject _obj = new JSONObject();
 	private JSONObject UserInfo = null;
 	private session se = new session();
-	private String sid = null;
 	private Map<String, String> ssessionmap = new Hashtable();
-	private String userid = "";
 	private String currentWeb = "";
 
 	public userModel() {
-		this.users = new GrapeTreeDBModel();
-		this.users.form("userList");
-		this.sid = ((String) execRequest.getChannelValue("GrapeSID"));
-		if (this.sid != null) {
-			this.UserInfo = this.se.getDatas();
-			if ((this.UserInfo != null) && (this.UserInfo.size() != 0)) {
-				this.userid = this.UserInfo.getMongoID("_id");
-				this.currentWeb = this.UserInfo.get("currentWeb").toString();
-			}
+		users = new GrapeTreeDBModel();
+		gdbField = new GrapeDBSpecField();
+		gdbField.importDescription(appsProxy.tableConfig("user"));
+		users.descriptionModel(gdbField);
+		users.bindApp();
+
+		UserInfo = se.getDatas();
+		if ((UserInfo != null) && (UserInfo.size() != 0)) {
+			currentWeb = UserInfo.get("currentWeb").toString();
 		}
 	}
 
-	private GrapeTreeDBModel bind() {
-		return (GrapeTreeDBModel) this.users.bindApp();
-	}
-
-	private HashMap<String, Object> getInitData() {
-		HashMap defcol = this.model.AddFixField();
-		defcol.put("sex", Integer.valueOf(1));
-		defcol.put("birthday", Integer.valueOf(0));
-		defcol.put("point", Integer.valueOf(0));
-		defcol.put("cash", Double.valueOf(0.0D));
-		defcol.put("ownid", Integer.valueOf(0));
-		defcol.put("time", null);
-		defcol.put("lasttime", Integer.valueOf(0));
-		defcol.put("ugid", Integer.valueOf(0));
-		defcol.put("state", Integer.valueOf(0));
-		defcol.put("plv", Integer.valueOf(100));
-		defcol.put("IDcard", "");
-		defcol.put("userheadImg", "");
-		defcol.put("wbid", this.currentWeb);
-		defcol.put("loginCount", Integer.valueOf(0));
-		return defcol;
-	}
-
+	@SuppressWarnings("unchecked")
 	public int register(JSONObject _userInfo) {
 		int code = 99;
 		if (_userInfo != null) {
@@ -101,8 +79,9 @@ public class userModel {
 
 				String secpassword = secPassword(_userInfo.get("password").toString());
 				_userInfo.replace("password", secpassword);
-				_userInfo = AddMap(getInitData(), _userInfo);
-				Object object = bind().data(_userInfo).insertOnce();
+				_userInfo.put("ugid", "58eb88698aa72f23d8d8b2a7");
+				// _userInfo = AddMap(getInitData(), _userInfo);
+				Object object = users.data(_userInfo).autoComplete().insertOnce();
 				code = object != null ? 0 : 99;
 			} catch (Exception e) {
 				nlogger.logout(e);
@@ -201,7 +180,7 @@ public class userModel {
 		if (field.equals("password")) {
 			password = codec.md5(password);
 		}
-		JSONObject object = bind().eq(_checkField, username).eq(field, password).find();
+		JSONObject object = users.eq(_checkField, username).eq(field, password).find();
 		if (object != null) {
 			String wbid = object.get("wbid").toString();
 			String ugid = object.get("ugid").toString();
@@ -220,7 +199,7 @@ public class userModel {
 			object.put("sid", sid);
 
 			JSONObject loginData = AddCount(_checkField, username);
-			String _id = ((JSONObject) object.get("_id")).getString("$oid");
+			String _id = object.getString("_id");
 			edit(_id, loginData);
 		}
 		return object;
@@ -230,7 +209,7 @@ public class userModel {
 		JSONObject obj = new JSONObject();
 		long times = 0L;
 		try {
-			JSONObject logincount = bind().eq(checkField, value).field("logincount").limit(1).find();
+			JSONObject logincount = users.eq(checkField, value).field("logincount").limit(1).find();
 			if ((logincount != null) && (logincount.size() != 0)) {
 				String values = String.valueOf(logincount.get("logincount"));
 				if (values.contains("$numberLong")) {
@@ -266,13 +245,11 @@ public class userModel {
 					if ((array != null) && (array.size() > 0)) {
 						webs = new JSONArray();
 						JSONObject objects = null;
-						JSONObject objid = null;
 						int i = 0;
 						for (int len = array.size(); i < len; i++) {
 							JSONObject object2 = (JSONObject) array.get(i);
-							objid = (JSONObject) object2.get("_id");
 							objects = new JSONObject();
-							objects.put("wbid", objid.get("$oid").toString());
+							objects.put("wbid", object2.getString("_id"));
 							objects.put("wbname", object2.get("title").toString());
 							objects.put("wbgid", object2.get("wbgid").toString());
 							webs.add(objects);
@@ -288,33 +265,36 @@ public class userModel {
 
 	private String getRole(String ugid) {
 		String name = "";
-
-		String temp = appsProxy.proxyCall("/GrapeUser1/roles/getRole/" + ugid).toString();
-		JSONObject tempObj = JSONObject.toJSON(temp);
-		if ((tempObj != null) && (tempObj.size() != 0)) {
-			tempObj = JSONObject.toJSON(tempObj.getString("message"));
-		}
-		if ((tempObj != null) && (tempObj.size() != 0)) {
-			tempObj = JSONObject.toJSON(tempObj.getString("records"));
-		}
-		if ((tempObj != null) && (tempObj.size() != 0)) {
-			name = tempObj.getString("name");
+		if (StringHelper.InvaildString(ugid) && !ugid.equals("0")) {
+			if (ObjectId.isValid(ugid) || checkHelper.isInt(ugid)) {
+				String temp = appsProxy.proxyCall("/GrapeUser1/roles/getRole/" + ugid).toString();
+				JSONObject tempObj = JSONObject.toJSON(temp);
+				if ((tempObj != null) && (tempObj.size() != 0)) {
+					tempObj = JSONObject.toJSON(tempObj.getString("message"));
+				}
+				if ((tempObj != null) && (tempObj.size() != 0)) {
+					tempObj = JSONObject.toJSON(tempObj.getString("records"));
+				}
+				if ((tempObj != null) && (tempObj.size() != 0)) {
+					name = tempObj.getString("name");
+				}
+			}
 		}
 		return name;
 	}
 
 	public void logout(String sid) {
 		String GrapeSID = session.getSID();
-		if ((GrapeSID == null) && (!this.ssessionmap.containsKey(sid))) {
-			GrapeSID = (String) this.ssessionmap.get(sid);
+		if ((GrapeSID == null) && (!ssessionmap.containsKey(sid))) {
+			GrapeSID = (String) ssessionmap.get(sid);
 		}
 
-		this.se.deleteSession();
+		se.deleteSession();
 	}
 
 	public long getpoint_username(String username) {
 		long rl = 0L;
-		JSONObject rs = bind().eq("id", username).field("point").find();
+		JSONObject rs = users.eq("id", username).field("point").find();
 		if (rs != null) {
 			rl = Long.parseLong(rs.get("point").toString());
 		}
@@ -327,7 +307,7 @@ public class userModel {
 		}
 		JSONObject object = new JSONObject();
 		object.put("password", secPassword(newPW));
-		object = bind().eq("id", id).eq("password", codec.md5(oldPW)).data(object).update();
+		object = users.eq("id", id).eq("password", codec.md5(oldPW)).data(object).update();
 		return object != null ? 0 : 99;
 	}
 
@@ -357,12 +337,12 @@ public class userModel {
 		}
 		JSONObject obj = new JSONObject();
 		obj.put("password", secPassword(newPW));
-		object = bind().eq(_checkField, id).eq("password", secPassword(oldPW)).data(obj).update();
+		object = users.eq(_checkField, id).eq("password", secPassword(oldPW)).data(obj).update();
 		return object != null ? 0 : 99;
 	}
 
 	private boolean checkUsers(String field, String value, String pw) {
-		return bind().eq(field, value).eq("password", secPassword(pw)).find() == null;
+		return users.eq(field, value).eq("password", secPassword(pw)).find() == null;
 	}
 
 	public int edit(String _id, JSONObject userInfo) {
@@ -384,7 +364,7 @@ public class userModel {
 				if (userInfo.containsKey("password")) {
 					userInfo.remove("password");
 				}
-				JSONObject object = bind().eq("_id", new ObjectId(_id)).data(userInfo).update();
+				JSONObject object = users.eq("_id", new ObjectId(_id)).data(userInfo).update();
 				code = object != null ? 0 : 99;
 			} catch (Exception e) {
 				nlogger.logout(e);
@@ -395,14 +375,14 @@ public class userModel {
 	}
 
 	public int Update(String id, String ownid, JSONObject object) {
-		return bind().eq("_id", new ObjectId(id)).eq("ownid", ownid).data(object).update() != null ? 0 : 99;
+		return users.eq("_id", new ObjectId(id)).eq("ownid", ownid).data(object).update() != null ? 0 : 99;
 	}
 
 	public String select() {
 		JSONArray array = null;
 		try {
 			array = new JSONArray();
-			array = bind().limit(20).select();
+			array = users.limit(20).select();
 		} catch (Exception e) {
 			nlogger.logout(e);
 			array = null;
@@ -418,11 +398,11 @@ public class userModel {
 				for (Iterator localIterator = userInfo.keySet().iterator(); localIterator.hasNext();) {
 					Object object2 = localIterator.next();
 					if (object2.equals("_id")) {
-						bind().eq("_id", new ObjectId(userInfo.get(object2).toString()));
+						users.eq("_id", new ObjectId(userInfo.get(object2).toString()));
 					}
-					bind().eq(object2.toString(), userInfo.get(object2.toString()));
+					users.eq(object2.toString(), userInfo.get(object2.toString()));
 				}
-				array = bind().limit(20).select();
+				array = users.limit(20).select();
 			} catch (Exception e) {
 				nlogger.logout(e);
 				array = null;
@@ -432,20 +412,20 @@ public class userModel {
 	}
 
 	public JSONObject select(String id) {
-		JSONObject object = bind().eq("id", id).find();
+		JSONObject object = users.eq("id", id).find();
 		return object != null ? object : null;
 	}
 
 	public String page(int idx, int pageSize) {
 		JSONObject object = new JSONObject();
 		JSONArray array = new JSONArray();
-		if (this.UserInfo != null) {
-			db db = bind();
+		if (UserInfo != null) {
+			db db = users;
 			try {
 				if (isAdmin()) {
 					array = db.page(idx, pageSize);
 				} else {
-					db.eq("wbid", (String) this.UserInfo.get("currentWeb"));
+					db.eq("wbid", (String) UserInfo.get("currentWeb"));
 					array = db.dirty().page(idx, pageSize);
 				}
 				object.put("totalSize", Integer.valueOf((int) Math.ceil(db.count() / pageSize)));
@@ -463,7 +443,7 @@ public class userModel {
 	}
 
 	public String page(int idx, int pageSize, JSONObject userInfo) {
-		db db = bind();
+		db db = users;
 		JSONObject object = new JSONObject();
 		JSONArray array = new JSONArray();
 		try {
@@ -497,12 +477,12 @@ public class userModel {
 		JSONArray array = null;
 		long total = 0L;
 		long totalSize = 0L;
-//		if (isAdmin())
-//			wbid = null;
-//		else {
-//			wbid = currentWeb;
-//		}
-//		db db = getDB(wbid, userInfo);
+		// if (isAdmin())
+		// wbid = null;
+		// else {
+		// wbid = currentWeb;
+		// }
+		// db db = getDB(wbid, userInfo);
 		db db = getDB(currentWeb, userInfo);
 		array = db.dirty().page(idx, pageSize);
 		totalSize = db.dirty().pageMax(pageSize);
@@ -525,7 +505,7 @@ public class userModel {
 	}
 
 	private db getDB(String wbid, String condString) {
-		db db = bind();
+		db db = users;
 		if ((condString != null) && (condString.equals(""))) {
 			JSONArray array = JSONArray.toJSONArray(condString);
 			if ((array != null) && (array.size() != 0)) {
@@ -541,7 +521,7 @@ public class userModel {
 	public int delect(String id) {
 		int code = 99;
 		try {
-			JSONObject object = bind().eq("_id", new ObjectId(id)).delete();
+			JSONObject object = users.eq("_id", new ObjectId(id)).delete();
 			code = object != null ? 0 : 99;
 		} catch (Exception e) {
 			nlogger.logout(e);
@@ -553,11 +533,11 @@ public class userModel {
 	public int delect(String[] arr) {
 		int code = 99;
 		try {
-			bind().or();
+			users.or();
 			for (int i = 0; i < arr.length; i++) {
-				bind().eq("_id", new ObjectId(arr[i]));
+				users.eq("_id", new ObjectId(arr[i]));
 			}
-			long codes = bind().deleteAll();
+			long codes = users.deleteAll();
 			code = Integer.parseInt(String.valueOf(codes)) == arr.length ? 0 : 99;
 		} catch (Exception e) {
 			nlogger.logout(e);
@@ -567,24 +547,24 @@ public class userModel {
 	}
 
 	public JSONObject findUserNameByID(String userName) {
-		return bind().eq("id", userName).find();
+		return users.eq("id", userName).find();
 	}
 
 	public JSONObject findUserNameByEmail(String email) {
-		return bind().eq("email", email).find();
+		return users.eq("email", email).find();
 	}
 
 	public JSONObject findUserNameByMoblie(String phoneno) {
-		return bind().eq("mobphone", phoneno).find();
+		return users.eq("mobphone", phoneno).find();
 	}
 
 	public JSONObject findUserByCard(String name, String IDCard) {
-		return bind().eq("name", name).eq("IDCard", IDCard).find();
+		return users.eq("name", name).eq("IDCard", IDCard).find();
 	}
 
 	public boolean checkUser(String id, String pw) {
 		pw = secPassword(pw);
-		return bind().eq("id", id).eq("password", pw).find() == null;
+		return users.eq("id", id).eq("password", pw).find() == null;
 	}
 
 	public boolean checkEmail(String email) {
@@ -623,7 +603,7 @@ public class userModel {
 		int code = 0;
 		for (int i = 0; i < array.size(); i++) {
 			if (code == 0)
-				code = bind().data((JSONObject) array.get(i)).insertOnce() != null ? 0 : 99;
+				code = users.data((JSONObject) array.get(i)).insertOnce() != null ? 0 : 99;
 			else {
 				code = 99;
 			}
@@ -632,8 +612,8 @@ public class userModel {
 	}
 
 	private JSONObject getIDCard(String name, String password) {
-		JSONObject object = bind().eq("name", name)
-				.eq("password", !password.equals("") ? codec.md5(password) : password).field("IDcard").find();
+		JSONObject object = users.eq("name", name).eq("password", !password.equals("") ? codec.md5(password) : password)
+				.field("IDcard").find();
 		return object != null ? object : null;
 	}
 
@@ -641,7 +621,7 @@ public class userModel {
 		JSONObject object = null;
 		try {
 			object = new JSONObject();
-			object = bind().eq("_id", new ObjectId(_id)).field("wbid").find();
+			object = users.eq("_id", new ObjectId(_id)).field("wbid").find();
 		} catch (Exception e) {
 			nlogger.logout(e);
 			object = null;
@@ -660,7 +640,7 @@ public class userModel {
 					wbid = String.join(",", new CharSequence[] { wbid, tempwbid });
 				}
 				object.put("wbid", wbid);
-				code = bind().eq("_id", new ObjectId(userid)).data(object).update() != null ? 0 : 99;
+				code = users.eq("_id", new ObjectId(userid)).data(object).update() != null ? 0 : 99;
 			} catch (Exception e) {
 				nlogger.logout(e);
 				code = 99;
@@ -673,16 +653,16 @@ public class userModel {
 		if (object == null) {
 			object = new JSONObject();
 		}
-		this._obj.put("records", object);
-		return resultMessage(0, this._obj.toString());
+		_obj.put("records", object);
+		return resultMessage(0, _obj.toString());
 	}
 
 	public String resultMessage(JSONArray array) {
 		if (array == null) {
 			array = new JSONArray();
 		}
-		this._obj.put("records", array);
-		return resultMessage(0, this._obj.toString());
+		_obj.put("records", array);
+		return resultMessage(0, _obj.toString());
 	}
 
 	public String resultMessage(int num, String message) {

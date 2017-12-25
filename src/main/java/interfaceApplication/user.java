@@ -29,7 +29,6 @@ import time.TimeHelper;
 public class user {
 	private userModel usermodel = new userModel();
 	private CommanModel model = new CommanModel();
-	private HashMap<String, Object> defcol = new HashMap();
 	private JSONObject _obj = new JSONObject();
 	private String sid = null;
 	private session se;
@@ -37,130 +36,131 @@ public class user {
 	private CacheHelper cache = new CacheHelper();
 
 	public user() {
-		this.se = new session();
-		this.sid = session.getSID();
-		if (this.sid != null)
-			this.userInfo = this.se.getDatas();
+		se = new session();
+		sid = session.getSID();
+		if (sid != null)
+			userInfo = se.getDatas();
 	}
 
 	public String UserRegister(String userInfo) {
-		return this.usermodel.resultMessage(this.usermodel.register(JSONHelper.string2json(userInfo)), "用户注册成功");
+		return usermodel.resultMessage(usermodel.register(JSONHelper.string2json(userInfo)), "用户注册成功");
 	}
 
 	public String getVerifyCode(String phone) {
 		String code = checkCodeHelper.getCheckCode(phone, 6);
 		code = ruoyaMASDB.sendSMS(phone, "验证码为：" + code + "有效时间为。。。，请在有效时间内进行验证");
-		return this.usermodel.resultMessage(code != null ? 0 : 99, "验证码发送成功");
+		return usermodel.resultMessage(code != null ? 0 : 99, "验证码发送成功");
 	}
 
 	public String getImageCode() {
 		String code = checkCodeHelper.generateVerifyCode(6);
-		this.cache.setget(code.toLowerCase(), code);
+		cache.setget(code.toLowerCase(), code);
 		byte[] image = imageCheckCode.getCodeimage(code);
 		return "data:image/jpeg;base64," + Base64.encodeBase64String(image);
 	}
 
 	public String checkVerifyCode(String phone, String code) {
 		boolean flag = checkCodeHelper.checkCode(phone, code);
-		return this.usermodel.resultMessage(flag ? 0 : 99, "验证成功");
+		return usermodel.resultMessage(flag ? 0 : 99, "验证成功");
 	}
 
 	public String checkImageCode(String code) {
 		int tip = 99;
 		code = code.toLowerCase();
-		if ((code != null) && (!code.equals("")) && (this.cache.get(code) != null)) {
-			this.cache.delete(code);
+		if ((code != null) && (!code.equals("")) && (cache.get(code) != null)) {
+			cache.delete(code);
 			tip = 0;
 		}
 
-		return this.usermodel.resultMessage(tip, "验证成功");
+		return usermodel.resultMessage(tip, "验证成功");
 	}
 
 	public String UserLogin(String userInfo) {
 		String mString = "";
 
-		String usersinfo = this.usermodel.checkLogin(JSONHelper.string2json(userInfo));
+		String usersinfo = usermodel.checkLogin(JSONHelper.string2json(userInfo));
 		if ((usersinfo != null) && (!usersinfo.contains("errorcode"))) {
 			JSONObject object = JSONObject.toJSON(usersinfo);
-			this._obj.put("records", object);
-			mString = this.usermodel.resultMessage(0, this._obj.toString());
+			_obj.put("records", object);
+			mString = usermodel.resultMessage(0, _obj.toString());
 		} else {
-			mString = this.usermodel.resultMessage(9, "");
+			mString = usermodel.resultMessage(9, "");
 		}
 		return mString;
 	}
 
 	public String UserLogout(String UserName) {
 		if ((UserName.length() > 1) && (UserName.length() < 128)) {
-			this.usermodel.logout(UserName);
+			usermodel.logout(UserName);
 		}
-		return this.usermodel.resultMessage(0, "退出成功");
+		return usermodel.resultMessage(0, "退出成功");
 	}
 
 	public String UserGetpoint(String userName) {
-		String value = String.valueOf(this.usermodel.getpoint_username(userName));
-		return this.usermodel.resultMessage(0, value);
+		String value = String.valueOf(usermodel.getpoint_username(userName));
+		return usermodel.resultMessage(0, value);
 	}
 
 	public String UserChangePW(String UserName, String oldPW, String newPW) {
-		return this.usermodel.resultMessage(this.usermodel.changePW(UserName, oldPW, newPW), "密码修改成功！");
+		return usermodel.resultMessage(usermodel.changePW(UserName, oldPW, newPW), "密码修改成功！");
 	}
 
 	public String UserChangePWFront(String UserName, String oldPW, String newPW, int loginmode) {
-		return this.usermodel.resultMessage(this.usermodel.changePWs(UserName, oldPW, newPW, loginmode), "密码修改成功！");
+		return usermodel.resultMessage(usermodel.changePWs(UserName, oldPW, newPW, loginmode), "密码修改成功！");
 	}
 
 	public String UserEdit(String _id, String userInfo) {
-		return this.usermodel.resultMessage(this.usermodel.edit(_id, JSONHelper.string2json(userInfo)), "用户信息修改成功");
+		return usermodel.resultMessage(usermodel.edit(_id, JSONHelper.string2json(userInfo)), "用户信息修改成功");
 	}
 
 	public String UserSelect() {
-		return this.usermodel.select();
+		return usermodel.select();
 	}
 
 	public String UserSearch(String userinfo) {
-		return this.usermodel.select(JSONHelper.string2json(userinfo));
+		return usermodel.select(JSONHelper.string2json(userinfo));
 	}
 
 	public String UserFind(String id) {
-		return this.usermodel.resultMessage(this.usermodel.select(id));
+		return usermodel.resultMessage(usermodel.select(id));
 	}
 
 	public String UserPageFront(String wbid, int idx, int pageSize) {
-		return this.usermodel.page(wbid, idx, pageSize, null);
+		return usermodel.page(wbid, idx, pageSize, null);
 	}
 
 	public String UserPageByFront(String wbid, int idx, int pageSize, String userinfo) {
-		return this.usermodel.page(wbid, idx, pageSize, userinfo);
+		return usermodel.page(wbid, idx, pageSize, userinfo);
 	}
 
 	public String UserPage(int idx, int pageSize) {
-		return this.usermodel.page(null, idx, pageSize, null);
+		return usermodel.page(null, idx, pageSize, null);
 	}
 
 	public String UserPageBy(int idx, int pageSize, String userinfo) {
-		return this.usermodel.page(null, idx, pageSize, userinfo);
+		return usermodel.page(null, idx, pageSize, userinfo);
 	}
 
 	public String UserDelete(String id) {
-		return this.usermodel.resultMessage(this.usermodel.delect(id), "删除成功");
+		return usermodel.resultMessage(usermodel.delect(id), "删除成功");
 	}
 
 	public String UserBatchDelect(String ids) {
-		return this.usermodel.resultMessage(this.usermodel.delect(ids.split(",")), "批量操作成功");
+		return usermodel.resultMessage(usermodel.delect(ids.split(",")), "批量操作成功");
 	}
 
 	public String AddLeader(String info) {
-		JSONObject object = this.usermodel.AddMap(this.defcol, JSONHelper.string2json(info));
-		return this.usermodel.resultMessage(this.usermodel.register(object), "新增用户成功");
+		JSONObject object = JSONObject.toJSON(info);
+//		JSONObject object = usermodel.AddMap(defcol, JSONHelper.string2json(info));
+		return usermodel.resultMessage(usermodel.register(object), "新增用户成功");
 	}
 
 	public String FindWbBySid(String wbid, String userid) {
-		return this.usermodel.FindWb(wbid, userid);
+		return usermodel.FindWb(wbid, userid);
 	}
 
 	public String findByCard(String name, String IDCard) {
-		return this.usermodel.findUserByCard(name, IDCard).toString();
+		return usermodel.findUserByCard(name, IDCard).toString();
 	}
 
 	// public String ExcelImport(String filepath)
@@ -170,18 +170,18 @@ public class user {
 	// JSONArray array = new JSONArray();
 	// List list = getAllByExcel(filepath);
 	// if (list == null) {
-	// return this.usermodel.resultMessage(11, "");
+	// return usermodel.resultMessage(11, "");
 	// }
 	// for (JSONObject jsonObject : list) {
 	// array.add(jsonObject);
 	// }
-	// return this.usermodel.Import(array);
+	// return usermodel.Import(array);
 	// }
 
 	public String getUserImage() {
 		String name = "";
-		if ((this.userInfo != null) && (this.userInfo.size() != 0)) {
-			name = this.userInfo.getString("name");
+		if ((userInfo != null) && (userInfo.size() != 0)) {
+			name = userInfo.getString("name");
 		}
 		return CreateImage(name);
 	}
