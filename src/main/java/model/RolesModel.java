@@ -1,10 +1,5 @@
 package model;
 
-import JGrapeSystem.jGrapeFW_Message;
-import apps.appsProxy;
-import database.db;
-import interfaceModel.GrapeDBSpecField;
-import interfaceModel.GrapeTreeDBModel;
 import java.io.FileInputStream;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -12,12 +7,17 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
-import json.JSONHelper;
-import nlogger.nlogger;
 import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import session.session;
+
+import common.java.JGrapeSystem.jGrapeFW_Message;
+import common.java.apps.appsProxy;
+import common.java.interfaceModel.GrapeDBSpecField;
+import common.java.interfaceModel.GrapeTreeDBModel;
+import common.java.json.JSONHelper;
+import common.java.nlogger.nlogger;
+import common.java.session.session;
 
 public class RolesModel {
 	private GrapeTreeDBModel role;

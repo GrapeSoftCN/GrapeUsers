@@ -1,8 +1,5 @@
 package interfaceApplication;
 
-import cache.CacheHelper;
-import checkCode.checkCodeHelper;
-import checkCode.imageCheckCode;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
@@ -15,16 +12,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 import javax.imageio.ImageIO;
-import json.JSONHelper;
 import model.CommanModel;
 import model.userModel;
 import org.apache.commons.codec.binary.Base64;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import security.codec;
-import session.session;
-import sms.ruoyaMASDB;
-import time.TimeHelper;
+
+import common.java.cache.CacheHelper;
+import common.java.checkCode.checkCodeHelper;
+import common.java.checkCode.imageCheckCode;
+import common.java.json.JSONHelper;
+import common.java.session.session;
+import common.java.sms.ruoyaMASDB;
+import common.java.time.TimeHelper;
 
 public class user {
 	private userModel usermodel = new userModel();

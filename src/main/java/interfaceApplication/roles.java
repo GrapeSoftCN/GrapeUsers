@@ -1,9 +1,10 @@
 package interfaceApplication;
 
-import json.JSONHelper;
 import model.RolesModel;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+
+import common.java.json.JSONHelper;
 
 public class roles {
 	private RolesModel rolesModel = new RolesModel();
